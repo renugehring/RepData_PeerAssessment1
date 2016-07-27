@@ -1,25 +1,170 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
 ---
-
+## Setting Global Options and using relevant libraries
+By default, display all R code chunks,using the knitr::opts_chunk option.  
+Our data contains a date variable, so let us use the lubridate library.  
+Also let us use the Dplyr library since it makes data processing easy.  
+The Ggplot2 library will help us graph results.  
+```{r setoptions}
+knitr::opts_chunk$set(echo=TRUE)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+```
 
 ## Loading and preprocessing the data
+Unzip 'activity.zip' to your working directory.  
+Now read data using the read.csv function.
+```{r readcsv}
+activity=read.csv("activity.csv",header=TRUE, stringsAsFactors = FALSE)
+```
+You can look at the metadata using str function and peruse the first few observations in the dataset using head function.
+```{r metadata}
+str(activity)
+head(activity)
+```
 
-
+Let us convert date to date format.
+```{r date}
+activity$date=ymd(activity$date)
+str(activity)
+```
 
 ## What is mean total number of steps taken per day?
 
+This part of the assignment ignore the missing values in the dataset.
 
+1. Calculate the total number of steps taken per day.  
+```{r numsteps}
+numsteps=activity %>%
+  filter(!is.na(steps)) %>%
+  group_by(date) %>%
+  summarize(totsteps=sum(steps)) %>%
+print
+```
 
+2. Make a histogram of the total number of steps taken each day. 
+```{r histogram}
+hist(numsteps$totsteps, xlab="Total Steps per Day",main="Histogram: Total Steps per Day", breaks=20)
+```
+
+3. Calculate and report the mean and median of the total number of steps taken per day  
+The mean of the total number of steps taken per day is:  
+```{r mean}
+mean(numsteps$totsteps, na.rm = TRUE)
+```
+The meadian of the total number of steps taken per day is:
+```{r median}
+median(numsteps$totsteps, na.rm = TRUE)
+```
 ## What is the average daily activity pattern?
 
+This part of the assignment ignores the missing values in the dataset.  
 
+1. Calculate the average number of steps taken per interval. 
+```{r daily}
+daily=activity %>%
+  filter(!is.na(steps)) %>%
+  group_by(interval) %>%
+  summarize(steps=mean(steps)) %>%
+print
+```
+2.  Plot
+
+```{r plot}
+g=ggplot(daily,aes(x=interval,y=steps))
+g+geom_line()
+```
+
+3.  Find the interval for which there are maximum steps.  
+```{r max}
+daily[which.max(daily$steps),]
+```
 
 ## Imputing missing values
 
 
+The total number of missing values in the dataset is:  
+```{r missingvalues}
+sum(is.na(activity$steps))
+```
+
+1.  Place the missing values in a separate dataset.  
+```{r missing}
+missing=activity %>%
+  filter(is.na(steps)) %>%
+  select(interval,date)
+```
+2.  Place the non missing in a separate datasets.  
+```{r nonmissing}
+ok=activity %>%
+  filter(!is.na(steps))
+```
+3.  Fill in the missing by using mean value of steps for each interval.(Daily dataset)
+```{r merge}
+replacemissing=merge(missing,daily, by="interval")
+head(replacemissing)
+```
+
+4.  Create a new dataset that is equal to the original dataset but with the missing data filled in.  
+```{r rbind}
+all=rbind(ok,replacemissing)
+head(all)
+str(all)
+```
+5.  Compute Total number of steps per day.  
+```{r numsteps2}
+numsteps2=all %>%
+  group_by(date) %>%
+  summarize(steps=sum(steps)) %>%
+print
+```
+
+6.  Make a histogram of the total number of steps taken each day 
+```{r histogram2}
+hist(numsteps2$steps, xlab="Total Steps per Day",main="Total Steps per Day with imputation of missing data", breaks=20)
+```
+
+
+6.  Calculate and report the mean and median total number of steps taken per day. 
+The mean of the total number of steps taken per day is:  
+```{r mean2}
+mean(numsteps2$steps)
+```
+The meadian of the total number of steps taken per day is:
+```{r median2}
+median(numsteps2$steps)
+```
+The effect of the missing value computation is that the mean and median are the same.  
 
 ## Are there differences in activity patterns between weekdays and weekends?
+1. Break out weekend/weekday.  
+```{r}
+all$group=weekdays(all$date)
+all$group2=ifelse(all$group=="Sunday" | all$group=="Saturday","weekend","weekday")
+all$group2=as.factor(all$group2)
+head(all)
+str(all)
+```
+
+2. Calculate the average number of steps taken per interval. 
+```{r daily2}
+daily2=all %>%
+  group_by(interval,group2) %>%
+  summarize(steps=mean(steps)) %>%
+print
+```
+3.  Make a Panel graph
+```{r}
+g <- ggplot(daily2, aes(y=steps, x=interval, color=group2))
+g <- g + 
+    geom_line(linetype=1) + facet_grid(group2~.)+
+    labs(x = "interval") +
+    labs(y = "Steps") + 
+    labs(title = "Number of Steps by Weekend/Weekday")
+print(g)
+```  
+
+The person is more active on weekdays earlier in the day.  
+This makes sense because most people like to sleep in on the weekends.  
