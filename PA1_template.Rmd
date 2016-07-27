@@ -1,5 +1,8 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
+output:
+  html_document:
+    keep_md: true
 ---
 ## Setting Global Options and using relevant libraries
 By default, display all R code chunks,using the knitr::opts_chunk option.  
